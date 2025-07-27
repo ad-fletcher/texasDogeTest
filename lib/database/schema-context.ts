@@ -18,7 +18,7 @@ payments (750K records, 2022-01-05 to 2022-12-04):
   - "Appd_Fund_Num" (bigint) → applicationFundCodes."Appd_Fund_Num" (bigint) ✓ CLEAN JOIN
   - "Fund_Num" (bigint) → fundCodes."Fund_Num" (bigint) ✓ CLEAN JOIN
   - "Appropriation_Number" (bigint) → appropriationNameCodes."Appropriation_Number" (bigint) ✓ CLEAN JOIN
-  - "Amount" (bigint) [stored in CENTS - convert for display]
+  - "Amount" (bigint) [stored in DOLLARS - no conversion needed]
   - "date" (date) [2022-01-05 to 2022-12-04]
   - "Payee_id" (bigint) → payeeCodes."Payee_id" (bigint) ✓ CLEAN JOIN
   - "Comptroller_Object_Num" (bigint) → comptrollerCodes."Comptroller_Object_Num" (bigint) ✓ CLEAN JOIN
@@ -35,7 +35,7 @@ LOOKUP TABLES (all require quoted identifiers, all codes are integers):
 POSTGRESQL REQUIREMENTS (SIMPLIFIED):
 - ALL identifiers MUST be quoted: "tableName", "columnName"
 - All JOINs use standard integer matching - NO TYPE CASTING NEEDED!
-- Amount conversion: p."Amount" / 100.0 for dollar display
+- Amount conversion: p."Amount"  for dollar display
 - Date filtering: '2022-01-01' to '2022-12-31' (no relative dates)
 - Use ILIKE for case-insensitive searches
 - Only SELECT queries allowed
@@ -108,8 +108,8 @@ export const SAMPLE_QUERIES = {
     SELECT 
       a."Agency_Name",
       COUNT(*) as payment_count,
-      SUM(p."Amount") / 100.0 as total_dollars,
-      AVG(p."Amount") / 100.0 as avg_payment_dollars
+      SUM(p."Amount") as total_dollars,
+      AVG(p."Amount") as avg_payment_dollars
     FROM "payments" p
     JOIN "agencyCodes" a ON p."Agency_CD" = a."Agency_CD"
     WHERE p."date" >= '2022-01-01' AND p."date" <= '2022-12-31'
@@ -121,7 +121,7 @@ export const SAMPLE_QUERIES = {
   monthlyTrends: `
     SELECT 
       DATE_TRUNC('month', p."date") as month,
-      SUM(p."Amount") / 100.0 as total_spending_dollars,
+      SUM(p."Amount") as total_spending_dollars,
       COUNT(*) as payment_count,
       COUNT(DISTINCT p."Agency_CD") as unique_agencies
     FROM "payments" p
@@ -134,8 +134,8 @@ export const SAMPLE_QUERIES = {
     SELECT 
       c."Category",
       COUNT(*) as payment_count,
-      SUM(p."Amount") / 100.0 as total_dollars,
-      ROUND(SUM(p."Amount") * 100.0 / SUM(SUM(p."Amount")) OVER (), 2) as percentage
+      SUM(p."Amount") as total_dollars,
+      ROUND(SUM(p."Amount") / SUM(SUM(p."Amount")) OVER (), 2) as percentage
     FROM "payments" p
     JOIN "categoryCodes" c ON p."CatCode" = c."CatCode"
     WHERE p."date" >= '2022-01-01' AND p."date" <= '2022-12-31'
@@ -147,7 +147,7 @@ export const SAMPLE_QUERIES = {
     SELECT 
       DATE_TRUNC('month', p."date") as month,
       a."Agency_Name",
-      SUM(p."Amount") / 100.0 as monthly_spending_dollars
+      SUM(p."Amount")  as monthly_spending_dollars
     FROM "payments" p
     JOIN "agencyCodes" a ON p."Agency_CD" = a."Agency_CD"
     WHERE p."date" >= '2022-01-01' AND p."date" <= '2022-12-31'
@@ -167,8 +167,8 @@ export const SAMPLE_QUERIES = {
     SELECT 
       pc."Payee_Name",
       COUNT(*) as payment_count,
-      SUM(p."Amount") / 100.0 as total_dollars,
-      MAX(p."Amount") / 100.0 as largest_payment_dollars
+      SUM(p."Amount")  as total_dollars,
+      MAX(p."Amount")  as largest_payment_dollars
     FROM "payments" p
     JOIN "payeeCodes" pc ON p."Payee_id" = pc."Payee_id"
     WHERE p."date" >= '2022-01-01' AND p."date" <= '2022-12-31'
@@ -184,7 +184,7 @@ export const SAMPLE_QUERIES = {
       c."Category",
       f."Fund_Description",
       COUNT(*) as payment_count,
-      SUM(p."Amount") / 100.0 as total_dollars
+      SUM(p."Amount")  as total_dollars
     FROM "payments" p
     JOIN "agencyCodes" a ON p."Agency_CD" = a."Agency_CD"
     JOIN "categoryCodes" c ON p."CatCode" = c."CatCode"
@@ -203,7 +203,7 @@ export const SAMPLE_QUERIES = {
 export const DATA_VALIDATION_RULES = {
   amounts: {
     description: 'All amounts stored as bigint in cents',
-    validation: 'Convert to dollars with: amount / 100.0',
+    validation: 'Convert to dollars with: amount ',
     range: 'Typical range: $0.01 to $1B+',
     display: 'Format as currency with appropriate precision'
   },
@@ -232,7 +232,7 @@ export const DATA_VALIDATION_RULES = {
  * Common Query Generation Helpers
  */
 export const QUERY_HELPERS = {
-  formatAmount: (columnName: string) => `${columnName} / 100.0`,
+  formatAmount: (columnName: string) => `${columnName} `,
   formatPercent: (numerator: string, denominator: string) => 
     `ROUND(${numerator} * 100.0 / ${denominator}, 2)`,
   dateFilter: (dateColumn: string, year: string = '2022') => 

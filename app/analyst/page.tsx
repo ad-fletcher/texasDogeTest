@@ -24,7 +24,7 @@ export default function Chat() {
             </div>
             
             {/* Render tool invocations */}
-            {message.toolInvocations?.map((toolInvocation, index) => {
+            {message.toolInvocations?.map((toolInvocation) => {
               const { toolName, toolCallId, state } = toolInvocation;
 
               if (state === 'result') {
@@ -106,7 +106,7 @@ export default function Chat() {
                       
                       {result.sections && result.sections.length > 0 && (
                         <div className="space-y-2">
-                          {result.sections.map((section: any, i: number) => (
+                          {result.sections.map((section: { sqlSection: string; explanation: string }, i: number) => (
                             <div key={i} className="text-xs">
                               <code className="bg-gray-100 px-2 py-1 rounded">{section.sqlSection}</code>
                               <p className="mt-1 text-amber-600">{section.explanation}</p>

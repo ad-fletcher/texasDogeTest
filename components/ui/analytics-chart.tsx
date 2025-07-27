@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
 import {
   BarChart,
@@ -128,10 +129,7 @@ export function AnalyticsChart({ chartConfig, data }: AnalyticsChartProps) {
     }).format(value);
   };
 
-  const formatTooltipValue = (value: number | string, name?: string) => {
-    const numValue = typeof value === 'number' ? value : parseFloat(value.toString()) || 0;
-    return [formatCurrency(numValue), name || 'Value'];
-  };
+
 
   // Truncate long labels for display
   const truncateLabel = (label: string, maxLength: number = 20) => {
@@ -174,14 +172,14 @@ export function AnalyticsChart({ chartConfig, data }: AnalyticsChartProps) {
   };
 
   // Enhanced tooltip with contextual information
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) => {
     if (!active || !payload?.length) return null;
 
     return (
       <div className="bg-white p-4 border rounded-lg shadow-lg border-gray-200 max-w-xs z-50">
         <p className="font-medium text-gray-900 mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => {
-          const insight = getContextualInsight(label, entry.value);
+        {payload.map((entry: { name: string; value: number; color: string }, index: number) => {
+          const insight = label ? getContextualInsight(label, entry.value) : null;
           return (
             <div key={index} className="space-y-1">
               <p className="text-sm" style={{ color: entry.color }}>
@@ -218,12 +216,7 @@ export function AnalyticsChart({ chartConfig, data }: AnalyticsChartProps) {
   };
 
   // Get suitability color based on score
-  const getSuitabilityColor = (score: number) => {
-    if (score >= 9) return 'text-green-700 bg-green-100';
-    if (score >= 7) return 'text-blue-700 bg-blue-100';
-    if (score >= 5) return 'text-yellow-700 bg-yellow-100';
-    return 'text-gray-700 bg-gray-100';
-  };
+
 
   const renderChart = () => {
     const commonProps = {
@@ -368,7 +361,7 @@ export function AnalyticsChart({ chartConfig, data }: AnalyticsChartProps) {
               cx="50%"
               cy="50%"
               outerRadius={Math.min(120, (chartDimensions.margin.bottom - 60) / 2 + 80)}
-              label={({ name, percent }) => `${truncateLabel(name, 15)}: ${(percent * 100).toFixed(1)}%`}
+              label={({ name, percent }) => `${truncateLabel(name, 15)}: ${((percent || 0) * 100).toFixed(1)}%`}
               labelLine={false}
               fontSize={11}
             >
@@ -427,7 +420,7 @@ export function AnalyticsChart({ chartConfig, data }: AnalyticsChartProps) {
             </button>
 
             {/* Alternative Chart Types */}
-            {chartConfig.alternativeCharts.map((alt, index) => (
+            {chartConfig.alternativeCharts.map((alt) => (
               <button
                 key={alt.type}
                 onClick={() => switchChartType(alt.type)}

@@ -399,18 +399,21 @@ export const executeAnalyticsQueryTool = tool({
         return { error: error.message, results: [] };
       }
       
-      // Process results (convert cents to dollars, format dates)
+      // Process results (format dates only - amounts already in dollars)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const processedResults = data?.map((row: any) => ({
-        ...row,
-        // Convert amount fields from cents to dollars
-        ...(row.amount && { amount: row.amount / 100 }),
-        ...(row.total_amount && { total_amount: row.total_amount / 100 }),
-        ...(row.monthly_spending && { monthly_spending: row.monthly_spending / 100 }),
+      const processedResults = data?.map((row: any) => {
+        const processedRow = { ...row };
+        
         // Format dates consistently
-        ...(row.date && { date: new Date(row.date).toISOString().split('T')[0] }),
-        ...(row.month && { month: new Date(row.month).toISOString().split('T')[0] })
-      })) || [];
+        if (processedRow.date) {
+          processedRow.date = new Date(processedRow.date).toISOString().split('T')[0];
+        }
+        if (processedRow.month) {
+          processedRow.month = new Date(processedRow.month).toISOString().split('T')[0];
+        }
+        
+        return processedRow;
+      }) || [];
       
       return { 
         results: processedResults,
