@@ -1,5 +1,7 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
+
+
 import {
   // Existing entity lookup tools (keep unchanged)
   getAgencyCodeTool,
@@ -21,9 +23,9 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
-
-  const result = streamText({
-    model: openai('gpt-4o'),
+ 
+  const result = streamText({ 
+    model: openai("gpt-4o"),
     system: `You are Texas DOGE Assistant, an expert in analyzing Texas government spending data. You can also talk to the user.
 
 CONVERSATIONAL ENTITY RESOLUTION WORKFLOW:
