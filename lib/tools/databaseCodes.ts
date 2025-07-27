@@ -475,19 +475,26 @@ export const explainSQLQueryTool = tool({
 export const generateChartConfigTool = tool({
   description: 'Generate intelligent chart configurations with business insights',
   parameters: z.object({
-    queryResults: z.array(z.any()),
+    queryResultsJson: z.string().describe('JSON string of processed query results from executeAnalyticsQueryTool'),
     originalQuestion: z.string(),
     sqlQuery: z.string(),
     entityContext: z.string().optional()
   }),
-  execute: async ({ queryResults, originalQuestion, sqlQuery, entityContext }) => {
+  execute: async ({ queryResultsJson, originalQuestion, sqlQuery, entityContext }) => {
     try {
+      const queryResults = JSON.parse(queryResultsJson);
+      
       if (!queryResults || queryResults.length === 0) {
         return {
           chartConfig: null,
           message: 'No data available for chart generation'
         };
       }
+      
+      // queryResults is now the processed data from executeAnalyticsQueryTool
+      // - Amounts already converted to dollars (no need to divide by 100)  
+      // - Dates already formatted as YYYY-MM-DD strings
+      // - Ready for direct chart consumption
 
       const result = await generateObject({
         model: openai('gpt-4o'),
@@ -518,7 +525,7 @@ export const generateChartConfigTool = tool({
           description: z.string(),
           xKey: z.string(),
           yKeys: z.array(z.string()),
-          colors: z.record(z.string(), z.string()),
+          colors: z.record(z.string(), z.string()).optional(),
           legend: z.boolean(),
           // Enhanced business insights
           businessInsights: z.array(z.string()),
@@ -573,7 +580,9 @@ export const generateChartConfigTool = tool({
       console.error('Error generating chart config:', e);
       return {
         chartConfig: null,
-        error: 'An error occurred while generating chart configuration'
+        error: e instanceof SyntaxError 
+          ? 'Invalid JSON data provided for chart generation'
+          : 'An error occurred while generating chart configuration'
       };
     }
   },

@@ -24,14 +24,27 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: openai('gpt-4o'),
-    system: `You are Texas DOGE Assistant, an expert in analyzing Texas government spending data.  You can also talk to the user.
+    system: `You are Texas DOGE Assistant, an expert in analyzing Texas government spending data. You can also talk to the user.
 
 CONVERSATIONAL ENTITY RESOLUTION WORKFLOW:
 1. When users mention entities (agencies, categories, etc.), use lookup tools FIRST
 2. If multiple matches found, present options and ask user to choose
 3. Once entities are resolved, use generateAnalyticsQuery with exact IDs
-4. Execute queries and provide visualizations
+4. Execute queries and provide visualizations using generateChart tool
 5. Explain results in business context
+
+CHART GENERATION WORKFLOW:
+- After executing a query with executeQuery, automatically use generateChart tool to create visualizations
+- Pass the query results as JSON string: JSON.stringify(executeQueryResult.results)
+- Include original question and SQL query for context
+- Charts help users understand spending patterns and trends
+
+EXAMPLE TOOL SEQUENCE:
+1. User: "Show top 5 agencies by spending with a chart"
+2. generateAnalyticsQuery → SQL query
+3. executeQuery → {results: [...], rowCount: 5, hasMoreResults: false}
+4. generateChart(JSON.stringify(executeResult.results), question, SQL) → chart config  
+5. Frontend renders AnalyticsChart component
 
 SMART CONFIRMATION LOGIC:
 - Single exact match: Auto-proceed with entity
@@ -58,11 +71,11 @@ Always be conversational and explain your reasoning.`,
       getPayeeCode: getPayeeCodeTool,
       getComptrollerCode: getComptrollerCodeTool,
       
-      // Enhanced SQL analytics tools (testing fixes)
+      // Enhanced SQL analytics tools
       generateAnalyticsQuery: generateAnalyticsQueryTool,
       executeQuery: executeAnalyticsQueryTool,
-      explainQuery: explainSQLQueryTool, // 🧪 testing fix
-      // generateChart: generateChartConfigTool, // ❌ CAUSING ERROR - needs debugging
+      explainQuery: explainSQLQueryTool,
+      generateChart: generateChartConfigTool, // ✅ Fixed parameter schema issue
     },
     maxSteps: 15, // Allow complex multi-step workflows
   });

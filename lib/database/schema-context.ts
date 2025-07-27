@@ -269,11 +269,13 @@ export const ERROR_PREVENTION = {
   ]
 };
 
-export default {
+const schemaExports = {
   DATABASE_SCHEMA_CONTEXT,
   BUSINESS_CONTEXT,
   SAMPLE_QUERIES,
   DATA_VALIDATION_RULES,
   QUERY_HELPERS,
   ERROR_PREVENTION
-}; 
+};
+
+export default schemaExports; 

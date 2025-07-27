@@ -6,11 +6,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Search, Play, Table as TableIcon, BarChart3, HelpCircle, Loader2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 // Types
 interface QueryResult {
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 interface ChartConfig {
@@ -387,7 +387,7 @@ LIMIT 5;`;
                         {columns.map((column) => (
                           <TableCell key={column}>
                             {column.includes('amount') || column.includes('total') 
-                              ? formatCurrency(row[column])
+                              ? formatCurrency(Number(row[column]) || 0)
                               : row[column]?.toString() || 'N/A'}
                           </TableCell>
                         ))}
@@ -424,7 +424,7 @@ LIMIT 5;`;
                     />
                     <ChartTooltip 
                       content={<ChartTooltipContent />}
-                      formatter={(value: any) => [formatCurrency(value), 'Total Amount']}
+                      formatter={(value: number | string) => [formatCurrency(Number(value)), 'Total Amount']}
                     />
                     <Bar 
                       dataKey={chartConfig.yKeys[0]} 
