@@ -43,8 +43,14 @@ export default function Chat() {
                     );
                   } else {
                     return (
-                      <div key={toolCallId} className="p-3 bg-red-100 border border-red-200 rounded">
-                        📊 Chart generation failed: {result.error || result.message || 'Unknown error'}
+                      <div key={toolCallId} className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-center mb-2">
+                          <span className="text-red-600 mr-2">⚠️</span>
+                          <span className="font-medium text-red-800">Chart Generation Failed</span>
+                        </div>
+                        <p className="text-red-700 text-sm">
+                          {result.error || result.message || 'Unknown error occurred'}
+                        </p>
                       </div>
                     );
                   }
@@ -170,6 +176,14 @@ export default function Chat() {
           >
             🥧 HHS Pie Chart
           </button>
+          <button 
+            onClick={() => handleSubmit(undefined, {
+              data: { message: "Show top 10 payees by total amount with a bar chart" }
+            })}
+            className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-sm hover:bg-orange-200"
+          >
+            💰 Top Payees Chart
+          </button>
         </div>
 
         {/* Input Form */}
@@ -189,6 +203,12 @@ export default function Chat() {
             Send
           </button>
         </form>
+        
+        {/* Interactive Features Help */}
+        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+          💡 <strong>Chart Features:</strong> Enhanced tooltips with insights • 
+          Zoom controls on time series charts • Hover effects for better visualization
+        </div>
       </div>
     </div>
   );

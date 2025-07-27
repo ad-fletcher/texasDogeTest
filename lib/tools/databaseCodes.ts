@@ -328,7 +328,7 @@ export const generateAnalyticsQueryTool = tool({
     try {
       // Use AI SDK generateObject with schema context
       const result = await generateObject({
-        model: openai('gpt-4o'),
+        model: openai('gpt-4.1'),
         system: DATABASE_SCHEMA_CONTEXT + `
         
         ENTITY RESOLUTION INTEGRATION:
@@ -435,7 +435,7 @@ export const explainSQLQueryTool = tool({
   execute: async ({ sqlQuery, originalQuestion }) => {
     try {
       const result = await generateObject({
-        model: openai('gpt-4o'),
+        model: openai('gpt-4.1'),
         system: `${DATABASE_SCHEMA_CONTEXT}
         
         Explain SQL queries for Texas government spending analysis.
@@ -473,7 +473,7 @@ export const explainSQLQueryTool = tool({
 
 // Enhanced Chart Configuration Generation Tool
 export const generateChartConfigTool = tool({
-  description: 'Generate intelligent chart configurations with business insights',
+  description: 'Generate intelligent chart configurations with business insights, enhanced features, and alternative chart type suggestions',
   parameters: z.object({
     queryResultsJson: z.string().describe('JSON string of processed query results from executeAnalyticsQueryTool'),
     originalQuestion: z.string(),
@@ -498,26 +498,60 @@ export const generateChartConfigTool = tool({
 
       const result = await generateObject({
         model: openai('gpt-4o'),
-        system: `You are a data visualization expert for Texas government spending.
+        system: `You are a data visualization expert for Texas government spending with expertise in enhanced chart features and multiple chart type recommendations.
         
-        CHART TYPE SELECTION:
-        - bar: Categorical comparisons (agencies, categories, funds)
-        - line: Time series trends (monthly, quarterly patterns)
-        - area: Cumulative analysis (spending over time)
-        - pie: Composition (spending distribution by category)
+        ENHANCED CHART TYPE SELECTION WITH ALTERNATIVES:
+        - bar: Best for categorical comparisons (agencies, categories, funds)
+          * Perfect for ranking and comparison analysis
+          * Include rich contextual tooltips
+        - line: Ideal for time series trends with zoom/brush capabilities
+          * Show seasonal patterns and trend analysis
+          * Enable zoom controls for detailed exploration
+        - area: Cumulative analysis over time with interactive zoom
+          * Best for showing growth patterns and total accumulation
+        - pie: Composition analysis with detailed tooltips
+          * Show percentage distributions effectively
+          * Rich hover information
+        
+        ALTERNATIVE CHART GENERATION STRATEGY:
+        - Always suggest 2-3 alternative chart types that would work well with the data
+        - Rate each alternative's suitability on a scale of 1-10
+        - Provide clear reasoning why each alternative would be valuable
+        - Consider different analytical perspectives (comparison vs trends vs composition)
+        - Ensure the primary recommendation is the best fit, alternatives offer different insights
+        
+        SUITABILITY SCORING GUIDELINES:
+        - 9-10: Excellent fit, provides unique valuable insights
+        - 7-8: Good fit, shows data from useful different perspective  
+        - 5-6: Adequate fit, some value but not ideal
+        - 3-4: Poor fit, limited analytical value
+        - 1-2: Very poor fit, misleading or unhelpful
         
         BUSINESS CONTEXT INTEGRATION:
-        - Reference specific agencies, funds, categories being analyzed
+        - Reference specific Texas agencies and their roles
         - Provide actionable insights about government spending patterns
-        - Highlight anomalies or significant trends
-        - Consider fiscal year context (Texas FY runs Oct-Sep)`,
+        - Highlight anomalies, trends, and fiscal efficiency opportunities
+        - Consider Texas fiscal year context (Oct-Sep) and legislative cycles
+        - Include contextual insights for major agencies:
+          * Health and Human Services: Social services, healthcare, public assistance
+          * Education: Universities, K-12, student aid, research
+          * Transportation: Infrastructure, highways, public transit
+          * Military: State guard, emergency response, homeland security
         
-        prompt: `Generate chart for: "${originalQuestion}"
+        ENHANCED FEATURES:
+        - Generate insights that work well in hover tooltips
+        - Create business context that helps users understand spending patterns
+        - Suggest natural follow-up analyses based on the data pattern
+        - Focus on rich, informative visualizations with professional styling`,
+        
+        prompt: `Generate enhanced chart configuration with multiple type options for: "${originalQuestion}"
         
         SQL Query: ${sqlQuery}
         Entity Context: ${entityContext || 'General analysis'}
         Sample Data: ${JSON.stringify(queryResults.slice(0, 3), null, 2)}
-        Total Records: ${queryResults.length}`,
+        Total Records: ${queryResults.length}
+        
+        Primary goal: Choose the BEST chart type as primary, then suggest 2-3 alternatives that would provide different analytical perspectives on the same data.`,
         
         schema: z.object({
           type: z.enum(['bar', 'line', 'area', 'pie']),
@@ -527,22 +561,33 @@ export const generateChartConfigTool = tool({
           yKeys: z.array(z.string()),
           colors: z.record(z.string(), z.string()).optional(),
           legend: z.boolean(),
-          // Enhanced business insights
+          // Enhanced business insights optimized for tooltips and context
           businessInsights: z.array(z.string()),
           takeaway: z.string(),
-          // Temporal analysis
+          // Interactive analysis features
           isTimeSeries: z.boolean(),
           trendAnalysis: z.object({
             direction: z.enum(['increasing', 'decreasing', 'stable', 'volatile']),
             changePercent: z.number().optional(),
             seasonality: z.string().optional()
           }).optional(),
-          // Data quality indicators  
+          // NEW: Alternative chart suggestions
+          alternativeCharts: z.array(z.object({
+            type: z.enum(['bar', 'line', 'area', 'pie']),
+            reason: z.string().describe('Why this chart type would be valuable for the data'),
+            suitability: z.number().min(1).max(10).describe('Suitability score from 1-10'),
+            title: z.string().describe('Alternative title optimized for this chart type'),
+            analyticalPerspective: z.string().describe('What unique insight this chart type provides')
+          })).optional(),
+          // Enhanced data quality indicators  
           dataQuality: z.object({
             completeness: z.number(), // 0-100%
             timeRange: z.string(),
             sampleSize: z.string()
-          })
+          }),
+          // Enhanced features metadata
+          enhancementLevel: z.enum(['basic', 'moderate', 'high']),
+          suggestedAnalyses: z.array(z.string()).optional()
         })
       });
       
@@ -552,7 +597,7 @@ export const generateChartConfigTool = tool({
         description: string;
         xKey: string;
         yKeys: string[];
-        colors: Record<string, string>;
+        colors?: Record<string, string>;
         legend: boolean;
         businessInsights: string[];
         takeaway: string;
@@ -562,18 +607,53 @@ export const generateChartConfigTool = tool({
           changePercent?: number;
           seasonality?: string;
         };
+        alternativeCharts?: Array<{
+          type: 'bar' | 'line' | 'area' | 'pie';
+          reason: string;
+          suitability: number;
+          title: string;
+          analyticalPerspective: string;
+        }>;
         dataQuality: {
           completeness: number;
           timeRange: string;
           sampleSize: string;
         };
+        enhancementLevel: 'basic' | 'moderate' | 'high';
+        suggestedAnalyses?: string[];
       };
+
+      // Generate default colors optimized for accessibility and visual appeal
+      if (!chartConfig.colors) {
+        const defaultColors: Record<string, string> = {};
+        chartConfig.yKeys.forEach((key, index) => {
+          // Use high-contrast, colorblind-friendly palette
+          const colors = [
+            '#1f77b4', // Blue
+            '#ff7f0e', // Orange  
+            '#2ca02c', // Green
+            '#d62728', // Red
+            '#9467bd', // Purple
+            '#8c564b', // Brown
+            '#e377c2', // Pink
+            '#7f7f7f', // Gray
+            '#bcbd22', // Olive
+            '#17becf'  // Cyan
+          ];
+          defaultColors[key] = colors[index % colors.length];
+        });
+        chartConfig.colors = defaultColors;
+      }
 
       return {
         chartConfig: chartConfig,
         dataPoints: queryResults.length,
         hasTimeSeries: chartConfig.isTimeSeries,
-        message: `Generated ${chartConfig.type} chart configuration for ${queryResults.length} data points`
+        enhancementLevel: chartConfig.enhancementLevel,
+        hasEnhancedFeatures: true,
+        hasAlternatives: (chartConfig.alternativeCharts?.length || 0) > 0,
+        alternativeCount: chartConfig.alternativeCharts?.length || 0,
+        message: `Generated enhanced ${chartConfig.type} chart with ${chartConfig.enhancementLevel} enhancement level and ${chartConfig.alternativeCharts?.length || 0} alternative chart types for ${queryResults.length} data points`
       };
 
     } catch (e) {
@@ -582,7 +662,8 @@ export const generateChartConfigTool = tool({
         chartConfig: null,
         error: e instanceof SyntaxError 
           ? 'Invalid JSON data provided for chart generation'
-          : 'An error occurred while generating chart configuration'
+          : 'An error occurred while generating chart configuration',
+        suggestion: 'Try rephrasing your request or asking for a simpler chart type'
       };
     }
   },
