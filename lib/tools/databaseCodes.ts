@@ -520,12 +520,6 @@ export const generateChartConfigTool = tool({
         - Consider different analytical perspectives (comparison vs trends vs composition)
         - Ensure the primary recommendation is the best fit, alternatives offer different insights
         
-        SUITABILITY SCORING GUIDELINES:
-        - 9-10: Excellent fit, provides unique valuable insights
-        - 7-8: Good fit, shows data from useful different perspective  
-        - 5-6: Adequate fit, some value but not ideal
-        - 3-4: Poor fit, limited analytical value
-        - 1-2: Very poor fit, misleading or unhelpful
         
         BUSINESS CONTEXT INTEGRATION:
         - Reference specific Texas agencies and their roles
@@ -574,10 +568,7 @@ export const generateChartConfigTool = tool({
           // NEW: Alternative chart suggestions
           alternativeCharts: z.array(z.object({
             type: z.enum(['bar', 'line', 'area', 'pie']),
-            reason: z.string().describe('Why this chart type would be valuable for the data'),
-            suitability: z.number().min(1).max(10).describe('Suitability score from 1-10'),
             title: z.string().describe('Alternative title optimized for this chart type'),
-            analyticalPerspective: z.string().describe('What unique insight this chart type provides')
           })).optional(),
           // Enhanced data quality indicators  
           dataQuality: z.object({

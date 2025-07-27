@@ -406,9 +406,6 @@ export function AnalyticsChart({ chartConfig, data }: AnalyticsChartProps) {
         <div className="space-y-3 p-4 bg-gray-50 rounded-lg border">
           <div className="flex items-center justify-between">
             <h4 className="font-medium text-gray-900">📊 View as different chart types:</h4>
-            <span className="text-xs text-gray-500">
-              Suitability scores help you choose the best visualization
-            </span>
           </div>
           
           <div className="flex flex-wrap gap-2">
@@ -441,12 +438,7 @@ export function AnalyticsChart({ chartConfig, data }: AnalyticsChartProps) {
                 }`}
                 title={`${alt.reason} - ${alt.analyticalPerspective}`}
               >
-                <div className="flex items-center space-x-2">
-                  <span>{alt.type}</span>
-                  <span className={`px-1.5 py-0.5 text-xs rounded font-medium ${getSuitabilityColor(alt.suitability)}`}>
-                    {alt.suitability}/10
-                  </span>
-                </div>
+                <span>{alt.type}</span>
               </button>
             ))}
           </div>
