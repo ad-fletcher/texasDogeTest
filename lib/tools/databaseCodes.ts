@@ -1,6 +1,13 @@
 import { tool } from 'ai';
     import { z } from 'zod';
+    import { generateObject } from 'ai';
+    import { openai } from '@ai-sdk/openai';
     import { supabase } from '../supabase';
+    import { DATABASE_SCHEMA_CONTEXT } from '../database/schema-context';
+
+    // ========================================
+    // EXISTING DATABASE CODE LOOKUP TOOLS
+    // ========================================
 
     export const getAgencyCodeTool = tool({
       description: 'Get the agency code for an agency name. Uses fuzzy search to return agencies from the database with fuzzy search.',
@@ -290,6 +297,284 @@ export const getComptrollerCodeTool = tool({
     } catch (e) {
       console.error('Error executing tool:', e);
       return { result: `An unexpected error occurred.` };
+    }
+  },
+});
+
+// ========================================
+// NEW SQL GENERATION TOOLS (Step 1.2)
+// ========================================
+
+// Enhanced SQL Analytics Query Generation Tool
+export const generateAnalyticsQueryTool = tool({
+  description: 'Generate PostgreSQL queries using pre-resolved entity IDs from lookup tools',
+  parameters: z.object({
+    naturalLanguageQuery: z.string(),
+    resolvedEntities: z.object({
+      agencyIds: z.array(z.number()).optional(),
+      categoryIds: z.array(z.number()).optional(),
+      fundIds: z.array(z.number()).optional(),
+      payeeIds: z.array(z.number()).optional(),
+      appropriationIds: z.array(z.number()).optional(),
+      comptrollerIds: z.array(z.number()).optional(),
+      applicationFundIds: z.array(z.number()).optional(),
+      dateRange: z.object({
+        start: z.string(),
+        end: z.string()
+      }).optional()
+    }).optional()
+  }),
+  execute: async ({ naturalLanguageQuery, resolvedEntities }) => {
+    try {
+      // Use AI SDK generateObject with schema context
+      const result = await generateObject({
+        model: openai('gpt-4o'),
+        system: DATABASE_SCHEMA_CONTEXT + `
+        
+        ENTITY RESOLUTION INTEGRATION:
+        - Use provided entity IDs directly in WHERE clauses
+        - No fuzzy matching needed - entities already resolved
+        - Generate precise queries with exact ID matching
+        
+        EXAMPLES WITH RESOLVED ENTITIES:
+        - agencyIds: [529, 537] → WHERE p."Agency_CD" IN (529, 537)
+        - categoryIds: [5] → WHERE p."CatCode" = 5
+        - dateRange specified → WHERE p."date" BETWEEN 'start' AND 'end'`,
+        
+        prompt: `Generate optimized PostgreSQL query for: "${naturalLanguageQuery}"
+        
+        Resolved Entities: ${JSON.stringify(resolvedEntities || {}, null, 2)}
+        
+        Use exact entity IDs in WHERE clauses for precision.`,
+        
+        schema: z.object({
+          sqlQuery: z.string(),
+          explanation: z.string(),
+          isValid: z.boolean(),
+          estimatedRows: z.number(),
+          chartSuitable: z.boolean(),
+          temporalAnalysis: z.boolean(),
+          entityContext: z.string() // Explain which entities were used
+        })
+      });
+      
+      return result.object;
+      
+    } catch (e) {
+      console.error('Error generating SQL query:', e);
+      return {
+        sqlQuery: '',
+        isValid: false,
+        explanation: 'Failed to generate SQL query',
+        error: 'An error occurred while generating the SQL query',
+        estimatedRows: 0,
+        chartSuitable: false,
+        temporalAnalysis: false,
+        entityContext: ''
+      };
+    }
+  },
+});
+
+// Enhanced Query Execution Tool
+export const executeAnalyticsQueryTool = tool({
+  description: 'Safely execute SQL queries against the Texas DOGE database',
+  parameters: z.object({
+    sqlQuery: z.string(),
+    maxRows: z.number().default(1000)
+  }),
+  execute: async ({ sqlQuery, maxRows }) => {
+    try {
+      // Validate query safety (SELECT only, no modifications)
+      if (!sqlQuery.trim().toUpperCase().startsWith('SELECT')) {
+        return { error: 'Only SELECT queries are allowed', results: [] };
+      }
+      
+      // The Supabase function now handles LIMIT clauses properly
+      const { data, error } = await supabase.rpc('execute_analytics_query', {
+        query_text: sqlQuery
+      });
+      
+      if (error) {
+        return { error: error.message, results: [] };
+      }
+      
+      // Process results (convert cents to dollars, format dates)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const processedResults = data?.map((row: any) => ({
+        ...row,
+        // Convert amount fields from cents to dollars
+        ...(row.amount && { amount: row.amount / 100 }),
+        ...(row.total_amount && { total_amount: row.total_amount / 100 }),
+        ...(row.monthly_spending && { monthly_spending: row.monthly_spending / 100 }),
+        // Format dates consistently
+        ...(row.date && { date: new Date(row.date).toISOString().split('T')[0] }),
+        ...(row.month && { month: new Date(row.month).toISOString().split('T')[0] })
+      })) || [];
+      
+      return { 
+        results: processedResults,
+        rowCount: processedResults.length,
+        hasMoreResults: processedResults.length === maxRows
+      };
+      
+    } catch (e) {
+      console.error('Query execution error:', e);
+      return { error: 'Query execution failed', results: [] };
+    }
+  }
+});
+
+// Enhanced SQL Query Explanation Tool
+export const explainSQLQueryTool = tool({
+  description: 'Explain SQL queries with business context for Texas DOGE database',
+  parameters: z.object({
+    sqlQuery: z.string(),
+    originalQuestion: z.string(),
+  }),
+  execute: async ({ sqlQuery, originalQuestion }) => {
+    try {
+      const result = await generateObject({
+        model: openai('gpt-4o'),
+        system: `${DATABASE_SCHEMA_CONTEXT}
+        
+        Explain SQL queries for Texas government spending analysis.
+        Break down each section with business context and data insights.`,
+        prompt: `Explain this SQL query in simple terms:
+        
+        Original Question: ${originalQuestion}
+        SQL Query: ${sqlQuery}`,
+        schema: z.object({
+          sections: z.array(z.object({
+            sqlSection: z.string(),
+            explanation: z.string(),
+            businessContext: z.string()
+          })),
+          summary: z.string(),
+          dataInsights: z.array(z.string()),
+          complexity: z.enum(['Simple', 'Moderate', 'Complex'])
+        })
+      });
+      
+      return result.object;
+      
+    } catch (e) {
+      console.error('Error explaining SQL query:', e);
+      return {
+        sections: [],
+        summary: 'Failed to explain the SQL query',
+        dataInsights: [],
+        complexity: 'Simple' as const,
+        error: 'An error occurred while explaining the query'
+      };
+    }
+  },
+});
+
+// Enhanced Chart Configuration Generation Tool
+export const generateChartConfigTool = tool({
+  description: 'Generate intelligent chart configurations with business insights',
+  parameters: z.object({
+    queryResults: z.array(z.any()),
+    originalQuestion: z.string(),
+    sqlQuery: z.string(),
+    entityContext: z.string().optional()
+  }),
+  execute: async ({ queryResults, originalQuestion, sqlQuery, entityContext }) => {
+    try {
+      if (!queryResults || queryResults.length === 0) {
+        return {
+          chartConfig: null,
+          message: 'No data available for chart generation'
+        };
+      }
+
+      const result = await generateObject({
+        model: openai('gpt-4o'),
+        system: `You are a data visualization expert for Texas government spending.
+        
+        CHART TYPE SELECTION:
+        - bar: Categorical comparisons (agencies, categories, funds)
+        - line: Time series trends (monthly, quarterly patterns)
+        - area: Cumulative analysis (spending over time)
+        - pie: Composition (spending distribution by category)
+        
+        BUSINESS CONTEXT INTEGRATION:
+        - Reference specific agencies, funds, categories being analyzed
+        - Provide actionable insights about government spending patterns
+        - Highlight anomalies or significant trends
+        - Consider fiscal year context (Texas FY runs Oct-Sep)`,
+        
+        prompt: `Generate chart for: "${originalQuestion}"
+        
+        SQL Query: ${sqlQuery}
+        Entity Context: ${entityContext || 'General analysis'}
+        Sample Data: ${JSON.stringify(queryResults.slice(0, 3), null, 2)}
+        Total Records: ${queryResults.length}`,
+        
+        schema: z.object({
+          type: z.enum(['bar', 'line', 'area', 'pie']),
+          title: z.string(),
+          description: z.string(),
+          xKey: z.string(),
+          yKeys: z.array(z.string()),
+          colors: z.record(z.string(), z.string()),
+          legend: z.boolean(),
+          // Enhanced business insights
+          businessInsights: z.array(z.string()),
+          takeaway: z.string(),
+          // Temporal analysis
+          isTimeSeries: z.boolean(),
+          trendAnalysis: z.object({
+            direction: z.enum(['increasing', 'decreasing', 'stable', 'volatile']),
+            changePercent: z.number().optional(),
+            seasonality: z.string().optional()
+          }).optional(),
+          // Data quality indicators  
+          dataQuality: z.object({
+            completeness: z.number(), // 0-100%
+            timeRange: z.string(),
+            sampleSize: z.string()
+          })
+        })
+      });
+      
+      const chartConfig = result.object as {
+        type: 'bar' | 'line' | 'area' | 'pie';
+        title: string;
+        description: string;
+        xKey: string;
+        yKeys: string[];
+        colors: Record<string, string>;
+        legend: boolean;
+        businessInsights: string[];
+        takeaway: string;
+        isTimeSeries: boolean;
+        trendAnalysis?: {
+          direction: 'increasing' | 'decreasing' | 'stable' | 'volatile';
+          changePercent?: number;
+          seasonality?: string;
+        };
+        dataQuality: {
+          completeness: number;
+          timeRange: string;
+          sampleSize: string;
+        };
+      };
+
+      return {
+        chartConfig: chartConfig,
+        dataPoints: queryResults.length,
+        hasTimeSeries: chartConfig.isTimeSeries,
+        message: `Generated ${chartConfig.type} chart configuration for ${queryResults.length} data points`
+      };
+
+    } catch (e) {
+      console.error('Error generating chart config:', e);
+      return {
+        chartConfig: null,
+        error: 'An error occurred while generating chart configuration'
+      };
     }
   },
 });

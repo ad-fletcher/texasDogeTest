@@ -5,13 +5,20 @@ import { useChat } from '@ai-sdk/react';
 // Mapping from technical tool names to user-friendly display names
 const getToolDisplayName = (toolName: string): string => {
   const toolDisplayNames: Record<string, string> = {
-    'getAgencyCode': 'Looking for realated Agencies to:',
+    // Entity lookup tools
+    'getAgencyCode': 'Looking for related Agencies to:',
     'getApplicationFundCode': 'Looking for related Application Funds to:',
     'getAppropriationCode': 'Looking for related Appropriation Codes to:',
     'getCategoryCode': 'Looking for related Category Codes to:',
     'getFundCode': 'Looking for related Fund Codes to:', 
     'getPayeeCode': 'Looking for related Payee Codes to:',
     'getComptrollerCode': 'Looking for related Comptroller Codes to:',
+    
+    // SQL analytics tools (working tools)
+    'generateAnalyticsQuery': '📊 Generating SQL query for:',
+    'executeQuery': '⚡ Executing database query...',
+    'explainQuery': '📖 Explaining SQL query:', // ✅ fixed and working
+    // 'generateChart': '📈 Creating data visualization:', // ❌ temporarily disabled
   };
   
   return toolDisplayNames[toolName] || toolName;
@@ -19,10 +26,8 @@ const getToolDisplayName = (toolName: string): string => {
 
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit } = useChat({
-    maxSteps: 10,
-  }
-
-  );
+    maxSteps: 15,
+  });
   return (
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
       {messages.map(message => (
