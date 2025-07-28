@@ -2,6 +2,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+
+Load vriables for OPENAI_API_KEY into dev server as well as supabase keys
 First, run the development server:
 
 ```bash
