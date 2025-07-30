@@ -262,7 +262,11 @@ export const getPayeeCodeTool = tool({
         result_limit: limit
       });
 
-      const { data, error } = await Promise.race([searchPromise, timeoutPromise]) as any;
+      const result = await Promise.race([searchPromise, timeoutPromise]);
+      const { data, error } = result as { 
+        data: Array<{ payee_name: string; payee_id: string }> | null; 
+        error: { code?: string; message?: string } | null 
+      };
 
       if (error) {
         console.error('Supabase RPC error:', error);
