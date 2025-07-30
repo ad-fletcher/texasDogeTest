@@ -87,8 +87,8 @@ export default function Home() {
           </div>
 
           <p className="text-lg lg:text-xl text-slate-700 leading-relaxed mb-8 font-light">
-            The State of Texas is committed to achieving complete transparency in governance. The Texas Doge Transparency Plan establishes
-            three core pillars – Open Data Access, Real-time Monitoring, and Public Accountability Standards.
+            Chaired by State Rep. Giovanni Capriglione and Delivery of Government Efficiency Committee is committed to ensuring that the State of Texas is transparent and accountable to the people of Texas.
+            
           </p>
 
           <Link href="/analyst">
