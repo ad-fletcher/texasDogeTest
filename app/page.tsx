@@ -124,7 +124,7 @@ export default function Home() {
           <CardHeader>
             <CardTitle className="text-2xl font-light text-slate-900">Government Payments Over Time</CardTitle>
             <CardDescription className="text-slate-600">
-              Monthly  payments in millions (USD) - 2024
+              Monthly  payments in (USD) - 2022 (Figures not updated)
             </CardDescription>
           </CardHeader>
           <CardContent>
