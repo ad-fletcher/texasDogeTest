@@ -87,7 +87,7 @@ export default function Home() {
           </div>
 
           <p className="text-lg lg:text-xl text-slate-700 leading-relaxed mb-8 font-light">
-            Chaired by State Rep. Giovanni Capriglione and Delivery of Government Efficiency Committee is committed to ensuring that the State of Texas is transparent and accountable to the people of Texas.
+            Chaired by State Rep. Giovanni Capriglione, the Delivery of Government Efficiency Committee is committed to ensuring that the State of Texas is transparent and accountable to the people of Texas.
             
           </p>
 
