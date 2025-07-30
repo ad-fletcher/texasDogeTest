@@ -6,6 +6,34 @@ import { tool } from 'ai';
     import { DATABASE_SCHEMA_CONTEXT } from '../database/schema-context';
 
     // ========================================
+    // DATABASE OPTIMIZATION REQUIRED
+    // ========================================
+    // 
+    // To fix payee search timeouts, create this optimized RPC function in Supabase:
+    //
+    // CREATE OR REPLACE FUNCTION search_payees_case_insensitive_limited(
+    //   search_term TEXT,
+    //   result_limit INTEGER DEFAULT 10
+    // )
+    // RETURNS TABLE(payee_name TEXT, payee_id TEXT) AS $$
+    // BEGIN
+    //   RETURN QUERY
+    //   SELECT p.payee_name::TEXT, p.payee_id::TEXT
+    //   FROM payees p
+    //   WHERE p.payee_name ILIKE '%' || search_term || '%'
+    //   ORDER BY 
+    //     CASE WHEN p.payee_name ILIKE search_term || '%' THEN 1 ELSE 2 END,
+    //     LENGTH(p.payee_name),
+    //     p.payee_name
+    //   LIMIT result_limit;
+    // END;
+    // $$ LANGUAGE plpgsql;
+    //
+    // Also create an index for better performance:
+    // CREATE INDEX IF NOT EXISTS idx_payees_name_gin ON payees USING gin(payee_name gin_trgm_ops);
+    // (Requires: CREATE EXTENSION IF NOT EXISTS pg_trgm;)
+    //
+    // ========================================
     // EXISTING DATABASE CODE LOOKUP TOOLS
     // ========================================
 
@@ -215,25 +243,41 @@ export const getFundCodeTool = tool({
   },
 });
 
-// Payee Code Tool
+// Payee Code Tool with Timeout Handling
 export const getPayeeCodeTool = tool({
-  description: 'Get the payee ID for a payee name. Uses fuzzy search to return payees from the database.',
+  description: 'Get the payee ID for a payee name. Uses fuzzy search to return payees from the database with timeout protection.',
   parameters: z.object({
     searchTerm: z.string().describe('The name of the payee to search for.'),
+    limit: z.number().default(10).describe('Maximum number of results to return (default: 10)')
   }),
-  execute: async ({ searchTerm }) => {
+  execute: async ({ searchTerm, limit = 10 }) => {
     try {
-      const { data, error } = await supabase.rpc('search_payees_case_insensitive', {
+      // Add timeout protection with Promise.race
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Search timeout - payee database is large, try a more specific search term')), 8000)
+      );
+
+      const searchPromise = supabase.rpc('search_payees_case_insensitive_limited', {
         search_term: searchTerm,
+        result_limit: limit
       });
+
+      const { data, error } = await Promise.race([searchPromise, timeoutPromise]) as any;
 
       if (error) {
         console.error('Supabase RPC error:', error);
-        return { result: `Error: Failed to query the database.` };
+        
+        // If the specific RPC doesn't exist, fall back to a simpler query
+        if (error.code === '42883' || error.message?.includes('function') || error.message?.includes('does not exist')) {
+          console.log('Falling back to basic payee search...');
+          return await executeBasicPayeeSearch(searchTerm, limit);
+        }
+        
+        return { result: `Error: Database query timeout. Try a more specific payee name (e.g., first few letters or exact company name).` };
       }
 
       if (!data || data.length === 0) {
-        return { result: `No payee found for "${searchTerm}".` };
+        return { result: `No payee found for "${searchTerm}". Try a partial name or check spelling.` };
       }
 
       if (data.length === 1) {
@@ -242,19 +286,69 @@ export const getPayeeCodeTool = tool({
       }
 
       const payeeList = data
+        .slice(0, limit) // Ensure we don't exceed the limit
         .map(
           (item: { payee_name: string; payee_id: string }) =>
             `${item.payee_name} (ID: ${item.payee_id})`,
         )
         .join(', ');
 
-      return { result: `Found multiple possible payees for "${searchTerm}": ${payeeList}.` };
+      const moreResultsText = data.length >= limit ? ` (showing first ${limit} results - be more specific for fewer results)` : '';
+      return { result: `Found multiple possible payees for "${searchTerm}": ${payeeList}${moreResultsText}.` };
+      
     } catch (e) {
-      console.error('Error executing tool:', e);
-      return { result: `An unexpected error occurred.` };
+      console.error('Error executing payee tool:', e);
+      
+      if (e instanceof Error && e.message.includes('timeout')) {
+        return { result: `Search timeout: The payees database is very large. Try a more specific search term (e.g., "DELL" instead of "D" or "UNIVERSITY OF TEXAS" instead of "UNIVERSITY").` };
+      }
+      
+      // Fall back to basic search if main search fails
+      console.log('Attempting fallback search...');
+      return await executeBasicPayeeSearch(searchTerm, limit);
     }
   },
-})    
+});
+
+// Fallback function for basic payee search
+async function executeBasicPayeeSearch(searchTerm: string, limit: number = 10) {
+  try {
+    // Use a direct SQL query with ILIKE for simple fuzzy search
+    // Table has 2.2M records, so we need to be very selective
+    const { data, error } = await supabase
+      .from('payeeCodes') // Correct table name from schema
+      .select('Payee_Name, Payee_id') // Correct column names
+      .ilike('Payee_Name', `%${searchTerm}%`)
+      .limit(limit);
+
+    if (error) {
+      console.error('Basic payee search error:', error);
+      return { result: `Error: Unable to search payees. Please try a different search term.` };
+    }
+
+    if (!data || data.length === 0) {
+      return { result: `No payee found for "${searchTerm}" in basic search. Try a shorter, simpler search term.` };
+    }
+
+    if (data.length === 1) {
+      const item = data[0];
+      return { result: `The payee ID for ${item.Payee_Name} is ${item.Payee_id}.` };
+    }
+
+    const payeeList = data
+      .map(
+        (item: { Payee_Name: string; Payee_id: string }) =>
+          `${item.Payee_Name} (ID: ${item.Payee_id})`,
+      )
+      .join(', ');
+
+    return { result: `Found multiple payees for "${searchTerm}": ${payeeList}.` };
+    
+  } catch (e) {
+    console.error('Basic payee search failed:', e);
+    return { result: `Unable to search payees. The database may be experiencing issues.` };
+  }
+}
 
 
 
