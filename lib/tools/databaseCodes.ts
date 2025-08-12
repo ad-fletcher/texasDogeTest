@@ -405,7 +405,7 @@ export const getComptrollerCodeTool = tool({
 
 // Enhanced SQL Analytics Query Generation Tool
 export const generateAnalyticsQueryTool = tool({
-  description: 'Generate PostgreSQL queries using pre-resolved entity IDs from lookup tools',
+  description: 'Generate PostgreSQL queries using pre-resolved entity IDs from lookup tools.  Create this query to best answer the user question.  ALWAYS LIMIT WHAT IS RECIVED TO 25 ROWS. EVEN IF THE USER ASKS NEVER GENERATE AN SQL QUERY THAT WOULD GIVE BACK MORE THAN 25 ROWS.  ',
   parameters: z.object({
     naturalLanguageQuery: z.string(),
     resolvedEntities: z.object({
@@ -429,6 +429,12 @@ export const generateAnalyticsQueryTool = tool({
         model: openai('gpt-4.1'),
         system: DATABASE_SCHEMA_CONTEXT + `
         
+        CRITICAL ROW LIMIT REQUIREMENT:
+        - ALWAYS include "LIMIT 25" in every SQL query
+        - NEVER generate queries that return more than 25 rows
+        - This is a hard requirement that cannot be overridden
+        - Even if user asks for more, always limit to 25 rows maximum
+        
         ENTITY RESOLUTION INTEGRATION:
         - Use provided entity IDs directly in WHERE clauses
         - No fuzzy matching needed - entities already resolved
@@ -443,7 +449,10 @@ export const generateAnalyticsQueryTool = tool({
         
         Resolved Entities: ${JSON.stringify(resolvedEntities || {}, null, 2)}
         
-        Use exact entity IDs in WHERE clauses for precision.`,
+        MANDATORY REQUIREMENTS:
+        - Use exact entity IDs in WHERE clauses for precision
+        - MUST include "LIMIT 25" at the end of every query
+        - Maximum 25 rows returned - this is non-negotiable`,
         
         schema: z.object({
           sqlQuery: z.string(),

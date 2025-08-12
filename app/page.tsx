@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
-import { Menu, ArrowRight } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -49,16 +49,7 @@ const recentTransactions = [
 export default function Home() {
   return (
     <div className="bg-stone-50 text-slate-900 min-h-screen">
-      {/* Header */}
-      <header className="flex items-center justify-end p-6 lg:p-8">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="bg-slate-800 text-white hover:bg-slate-700 rounded-full w-12 h-12"
-        >
-          <Menu className="h-6 w-6" />
-        </Button>
-      </header>
+
 
       {/* Main Content */}
       <div className="flex flex-col lg:flex-row items-center justify-between px-6 lg:px-16 py-12 lg:py-24 max-w-7xl mx-auto">
