@@ -2,11 +2,16 @@
 
 import { useChat } from '@ai-sdk/react';
 import { AnalyticsChart } from '@/components/ui/analytics-chart';
+import { downloadCSVFromServer, formatEstimatedSize } from '@/lib/utils/csv';
+import { useState } from 'react';
 
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    maxSteps: 15, // Enable multi-step tool usage
+    maxSteps: 50, // Enable multi-step tool usage
   });
+
+  // Add state for download progress
+  const [downloadingQueries, setDownloadingQueries] = useState<Set<string>>(new Set());
 
   return (
     <div className="flex flex-col h-screen max-w-6xl mx-auto"> {/* Wider for charts */}
@@ -117,6 +122,116 @@ export default function Chat() {
                     </div>
                   );
                 }
+                
+                // NEW: Prepare Bulk Download Tool Result (Phase 1)
+                else if (toolName === 'prepareBulkDownload') {
+                  const { result } = toolInvocation;
+                  
+                  if (result.success && result.prepared) {
+                    const isDownloading = downloadingQueries.has(toolCallId);
+                    
+                    const handleDownload = async () => {
+                      setDownloadingQueries(prev => new Set(prev).add(toolCallId));
+                      
+                      try {
+                        await downloadCSVFromServer(result.sqlQuery, result.filename);
+                      } catch (error) {
+                        console.error('Download failed:', error);
+                        // Could add toast notification here
+                        alert('Download failed: ' + (error as Error).message);
+                      } finally {
+                        setDownloadingQueries(prev => {
+                          const newSet = new Set(prev);
+                          newSet.delete(toolCallId);
+                          return newSet;
+                        });
+                      }
+                    };
+                    
+                    return (
+                      <div key={toolCallId} className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <div className="flex items-center mb-2">
+                              <span className="text-green-600 mr-2">📊</span>
+                              <span className="font-medium text-green-800">CSV Download Ready</span>
+                            </div>
+                            <div className="text-sm text-green-700 space-y-1">
+                              <p><strong>Estimated Records:</strong> {result.estimatedRows.toLocaleString()}</p>
+                              <p><strong>Columns:</strong> {result.csvColumns?.length || 'Multiple'}</p>
+                              <p><strong>Estimated Size:</strong> {formatEstimatedSize(result.estimatedRows, result.csvColumns?.length)}</p>
+                              <p><strong>File:</strong> {result.filename}</p>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={handleDownload}
+                            disabled={isDownloading}
+                            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+                              isDownloading 
+                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                : 'bg-green-600 text-white hover:bg-green-700'
+                            }`}
+                          >
+                            {isDownloading ? (
+                              <>
+                                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                <span>Downloading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>📥</span>
+                                <span>Download CSV</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        
+                        {/* Query Preview - No Data Preview since we don't execute */}
+                        <div className="bg-white border rounded p-3">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">Query Preview:</h4>
+                          <p className="text-xs text-gray-600 mb-2">{result.explanation}</p>
+                          <p className="text-xs text-gray-500">
+                            <strong>Entity Context:</strong> {result.entityContext}
+                          </p>
+                        </div>
+                        
+                        {/* Query Information */}
+                        <details className="mt-3">
+                          <summary className="text-sm text-green-700 cursor-pointer hover:text-green-800">
+                            View SQL Query
+                          </summary>
+                          <pre className="mt-2 p-2 bg-gray-900 text-green-400 rounded text-xs overflow-x-auto">
+                            {result.sqlQuery}
+                          </pre>
+                        </details>
+                        
+                        {/* Performance Note */}
+                        <div className="mt-3 p-2 bg-blue-50 border-l-4 border-blue-400 rounded text-xs">
+                          <p className="text-blue-800">
+                            <strong>💡 Performance:</strong> Large datasets (&gt;50K records) may take several minutes to download.  Downloading is currently limited to 1000 records
+                            The download will start automatically when ready.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div key={toolCallId} className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-center mb-2">
+                          <span className="text-red-600 mr-2">⚠️</span>
+                          <span className="font-medium text-red-800">CSV Preparation Failed</span>
+                        </div>
+                        <p className="text-red-700 text-sm mb-2">
+                          {result.error || 'Unknown error occurred during CSV preparation'}
+                        </p>
+                        {result.suggestion && (
+                          <p className="text-red-600 text-xs italic">💡 {result.suggestion}</p>
+                        )}
+                      </div>
+                    );
+                  }
+                }
               } 
               // Loading states
               else {
@@ -129,6 +244,7 @@ export default function Chat() {
                         {toolName === 'generateAnalyticsQuery' && '⚡ Generating SQL query...'}
                         {toolName === 'executeQuery' && '🗄️ Executing database query...'}
                         {toolName === 'explainQuery' && '📖 Explaining query...'}
+                        {toolName === 'prepareBulkDownload' && '📋 Preparing download...'}
                         {toolName.includes('Code') && '🔍 Looking up entity...'}
                       </span>
                     </div>
@@ -150,7 +266,7 @@ export default function Chat() {
 
       {/* Enhanced Input with Chart-focused Suggestions */}
       <div className="border-t p-4 space-y-4">
-        {/* Quick Action Buttons */}
+        {/* Enhanced Quick Action Buttons with Download Options */}
         <div className="flex flex-wrap gap-2">
           <button 
             onClick={() => handleSubmit(undefined, {
@@ -184,6 +300,32 @@ export default function Chat() {
           >
             💰 Top Payees Chart
           </button>
+          
+          {/* NEW: Download-focused buttons */}
+          <button 
+            onClick={() => handleSubmit(undefined, {
+              data: { message: "Download all agency spending data as CSV" }
+            })}
+            className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200"
+          >
+            📥 Download Agency Data
+          </button>
+          <button 
+            onClick={() => handleSubmit(undefined, {
+              data: { message: "Export monthly spending trends for 2022 to CSV" }
+            })}
+            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200"
+          >
+            📊 Export Monthly Data
+          </button>
+          <button 
+            onClick={() => handleSubmit(undefined, {
+              data: { message: "Download Health and Human Services spending breakdown as CSV" }
+            })}
+            className="px-3 py-1 bg-pink-100 text-pink-700 rounded text-sm hover:bg-pink-200"
+          >
+            🏥 HHS Bulk Download
+          </button>
         </div>
 
         {/* Input Form */}
@@ -208,6 +350,14 @@ export default function Chat() {
         <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
           💡 <strong>Chart Features:</strong> Enhanced tooltips with insights • 
           Zoom controls on time series charts • Hover effects for better visualization
+        </div>
+        
+        {/* Smart Download Suggestions */}
+        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+          💡 <strong>Download Tips:</strong> 
+          Say &quot;download as CSV&quot; or &quot;export to CSV&quot; after any query to get the complete dataset • 
+          Large downloads (&gt;10k records) may take a few moments • 
+          Files are optimized for Excel and data analysis tools
         </div>
       </div>
     </div>

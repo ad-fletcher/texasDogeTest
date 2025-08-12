@@ -405,7 +405,7 @@ export const getComptrollerCodeTool = tool({
 
 // Enhanced SQL Analytics Query Generation Tool
 export const generateAnalyticsQueryTool = tool({
-  description: 'Generate PostgreSQL queries using pre-resolved entity IDs from lookup tools.  Create this query to best answer the user question.  ALWAYS LIMIT WHAT IS RECIVED TO 25 ROWS. EVEN IF THE USER ASKS NEVER GENERATE AN SQL QUERY THAT WOULD GIVE BACK MORE THAN 25 ROWS.  ',
+  description: 'Generate PostgreSQL queries using pre-resolved entity IDs from lookup tools.   ',
   parameters: z.object({
     naturalLanguageQuery: z.string(),
     resolvedEntities: z.object({
@@ -774,3 +774,86 @@ export const generateChartConfigTool = tool({
 
 
 
+export const prepareBulkDownloadTool = tool({
+  description: 'Prepare SQL query for bulk CSV download without executing it. Shows download button immediately.',
+  parameters: z.object({
+    naturalLanguageQuery: z.string(),
+    resolvedEntities: z.object({
+      agencyIds: z.array(z.number()).optional(),
+      categoryIds: z.array(z.number()).optional(),
+      fundIds: z.array(z.number()).optional(),
+      payeeIds: z.array(z.number()).optional(),
+      appropriationIds: z.array(z.number()).optional(),
+      comptrollerIds: z.array(z.number()).optional(),
+      applicationFundIds: z.array(z.number()).optional(),
+      dateRange: z.object({
+        start: z.string(),
+        end: z.string()
+      }).optional()
+    }).optional(),
+    filename: z.string().describe('Suggested filename for the CSV download')
+  }),
+  execute: async ({ naturalLanguageQuery, resolvedEntities, filename }) => {
+    try {
+      // Generate SQL without executing - just prepare the query
+      const sqlResult = await generateObject({
+        model: openai('gpt-4.1'),
+        system: DATABASE_SCHEMA_CONTEXT + `
+        
+        BULK DOWNLOAD REQUIREMENTS:
+        - NO ROW LIMITS - Remove all LIMIT clauses
+        - Generate queries for complete datasets
+        - Optimize for CSV export format
+        - Use clear column names for CSV headers
+        - Include all relevant data for analysis
+        
+        ENTITY RESOLUTION INTEGRATION:
+        - Use provided entity IDs directly in WHERE clauses
+        - Generate precise queries with exact ID matching
+        
+        CSV-OPTIMIZED QUERIES:
+        - Select human-readable names alongside IDs
+        - Include date formatting for Excel compatibility  
+        - Order by logical columns (date, amount desc, name)
+        - Ensure column names are CSV-friendly (no special chars)`,
+        
+        prompt: `Generate optimized PostgreSQL query for bulk CSV download: "${naturalLanguageQuery}"
+        
+        Resolved Entities: ${JSON.stringify(resolvedEntities || {}, null, 2)}
+        
+        REQUIREMENTS:
+        - NO LIMIT clause - return complete dataset
+        - CSV-friendly column names and formatting
+        - Include both codes and human-readable names
+        - Optimized for data analysis and reporting`,
+        
+        schema: z.object({
+          sqlQuery: z.string(),
+          explanation: z.string(),
+          estimatedRows: z.number(),
+          csvColumns: z.array(z.string()),
+          entityContext: z.string()
+        })
+      });
+
+      // Return query preparation without execution
+      return {
+        success: true,
+        prepared: true,
+        sqlQuery: sqlResult.object.sqlQuery,
+        csvColumns: sqlResult.object.csvColumns,
+        filename: filename || 'texas_doge_data.csv',
+        entityContext: sqlResult.object.entityContext,
+        estimatedRows: sqlResult.object.estimatedRows,
+        explanation: sqlResult.object.explanation
+      };
+
+    } catch (e) {
+      console.error('Bulk download preparation error:', e);
+      return { 
+        error: 'Failed to prepare bulk download query',
+        suggestion: 'Try a more specific query or contact support for large datasets'
+      };
+    }
+  },
+});

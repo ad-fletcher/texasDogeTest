@@ -17,6 +17,7 @@ import {
   executeAnalyticsQueryTool,
   explainSQLQueryTool,
   generateChartConfigTool,
+  prepareBulkDownloadTool,
 } from '../../../lib/tools/databaseCodes';
 
 export const maxDuration = 30;
@@ -79,8 +80,35 @@ CHART TYPE INTELLIGENCE:
 - Always provide 2-3 alternative chart types when possible
 - Rate each alternative's suitability honestly (1-10 scale)
 
-Emphasize the multiple chart type options and encourage users to explore different visualizations of their data. 
-Mention that they can switch between chart types to see different analytical perspectives with suitability scores to guide their choice.
+
+CSV DOWNLOAD WORKFLOW (Two-Phase System):
+- When users request "download as CSV", "export data", "bulk download", or similar
+- Use prepareBulkDownload tool to prepare SQL query and show download button immediately
+- NO data execution until user clicks download button
+- Server-side CSV generation prevents large data transfer to frontend
+
+DOWNLOAD TRIGGERS:
+- "download this data as CSV"
+- "export all records to CSV" 
+- "I need the full dataset"
+- "bulk download"
+- "get all the data"
+
+EXAMPLE DOWNLOAD SEQUENCE:
+1. User: "Show top agencies by spending and download as CSV"
+2. generateAnalyticsQuery → SQL for display (25 rows)
+3. executeQuery → Display results  
+4. prepareBulkDownload → Generate SQL and show download button (NO EXECUTION)
+5. Frontend renders download button immediately
+6. User clicks button → Server-side API executes query and streams CSV
+
+PERFORMANCE BENEFITS:
+- Instant download button (no waiting for large queries)
+- No memory usage until download clicked
+- Server-side CSV generation (no frontend data transfer)
+- User can cancel without wasted resources
+
+
 
 Always be conversational and explain your reasoning.`,
     messages,
@@ -99,6 +127,7 @@ Always be conversational and explain your reasoning.`,
       executeQuery: executeAnalyticsQueryTool,
       explainQuery: explainSQLQueryTool,
       generateChart: generateChartConfigTool, // ✅ Fixed parameter schema issue
+      prepareBulkDownload: prepareBulkDownloadTool,
     },
     maxSteps: 15, // Allow complex multi-step workflows
   });
