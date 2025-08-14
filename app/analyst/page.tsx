@@ -15,7 +15,7 @@ export default function Chat() {
   const [downloadingQueries, setDownloadingQueries] = useState<Set<string>>(new Set());
   
   // Add state to track if user has started interacting (hide info boxes)
-  const [showInfoBoxes, setShowInfoBoxes] = useState(true);
+  const [showInfoBoxes] = useState(true);
 
   return (
     <div className="flex flex-col h-screen max-w-6xl mx-auto"> {/* Wider for charts */}

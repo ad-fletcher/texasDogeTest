@@ -28,7 +28,7 @@ export function InfoBoxes({ showInfoBoxes, messagesLength }: InfoBoxesProps) {
             Payment data by government agencies and departments
           </p>
           <div className="text-xs text-gray-500">
-            Example: "Show me top spending agencies" or "Health dept spending trends"
+            Example: &quot;Show me top spending agencies&quot; or &quot;Health dept spending trends&quot;
           </div>
         </div>
 
@@ -42,7 +42,7 @@ export function InfoBoxes({ showInfoBoxes, messagesLength }: InfoBoxesProps) {
             High-level spending categories and classifications
           </p>
           <div className="text-xs text-gray-500">
-            Example: "Personnel vs operational costs" or "Category breakdown"
+            Example: &quot;Personnel vs operational costs&quot; or &quot;Category breakdown&quot;
           </div>
         </div>
 
@@ -56,7 +56,7 @@ export function InfoBoxes({ showInfoBoxes, messagesLength }: InfoBoxesProps) {
             Detailed spending categories with specific comptroller codes
           </p>
           <div className="text-xs text-gray-500">
-            Example: "Show comptroller code 1234" or "Detailed category analysis"
+            Example: &quot;Show comptroller code 1234&quot; or &quot;Detailed category analysis&quot;
           </div>
         </div>
 
@@ -70,7 +70,7 @@ export function InfoBoxes({ showInfoBoxes, messagesLength }: InfoBoxesProps) {
             Funding sources and budget allocations
           </p>
           <div className="text-xs text-gray-500">
-            Example: "General revenue fund spending" or "Fund source analysis"
+            Example: &quot;General revenue fund spending&quot; or &quot;Fund source analysis&quot;
           </div>
         </div>
 
@@ -84,7 +84,7 @@ export function InfoBoxes({ showInfoBoxes, messagesLength }: InfoBoxesProps) {
             Companies, vendors, and recipients of payments
           </p>
           <div className="text-xs text-gray-500">
-            Example: "Top contractors" or "University of Texas payments"
+            Example: &quot;Top contractors&quot; or &quot;University of Texas payments&quot;
           </div>
         </div>
 
@@ -98,7 +98,7 @@ export function InfoBoxes({ showInfoBoxes, messagesLength }: InfoBoxesProps) {
             Download complete datasets as CSV files
           </p>
           <div className="text-xs text-gray-500">
-            Example: "Download agency data as CSV" or "Export to Excel"
+            Example: &quot;Download agency data as CSV&quot; or &quot;Export to Excel&quot;
           </div>
         </div>
       </div>
