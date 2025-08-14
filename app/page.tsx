@@ -11,7 +11,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } fro
 
 // Sample data for payments over time
 const paymentsData = [
-  { month: "Jan", amount: 2.4 },
+  { month: "Jan", amount: 6.9 },
   { month: "Feb", amount: 3.1 },
   { month: "Mar", amount: 2.8 },
   { month: "Apr", amount: 4.2 },
