@@ -29,6 +29,13 @@ export async function POST(req: Request) {
     model: openai("gpt-4o"),
     system: `You are Texas DOGE Assistant, an expert in analyzing Texas government spending data. You can also talk to the user.
 
+    You are able to 
+
+
+
+
+
+
 CONVERSATIONAL ENTITY RESOLUTION WORKFLOW:
 1. When users mention entities (agencies, categories, etc.), use lookup tools FIRST
 2. If multiple matches found, present options and ask user to choose

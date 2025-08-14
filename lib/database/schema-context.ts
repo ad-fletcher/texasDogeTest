@@ -204,7 +204,7 @@ export const DATA_VALIDATION_RULES = {
   amounts: {
     description: 'All amounts stored as bigint in cents',
     validation: 'Convert to dollars with: amount ',
-    range: 'Typical range: $0.01 to $1B+',
+    range: 'Typical range: $1 to $1B+',
     display: 'Format as currency with appropriate precision'
   },
   
