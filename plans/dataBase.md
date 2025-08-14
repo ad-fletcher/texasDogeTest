@@ -10,9 +10,7 @@ The following diagram illustrates the relationships between the `payments` table
 graph TD
     payments --> agencyCodes;
     payments --> applicationFundCodes;
-    payments --> appropriationNameCodes;
     payments --> categoryCodes;
-    payments --> fundCodes;
     payments --> payeeCodes;
     payments --> comptrollerCodes;
 ```
@@ -29,18 +27,16 @@ This is the main transactional table.
 | `CatCode`                 | bigint    | Foreign key to `categoryCodes.CatCode`            |
 | `Agency_CD`               | bigint    | Foreign key to `agencyCodes.Agency_CD`            |
 | `Appd_Fund_Num`           | bigint    | Foreign key to `applicationFundCodes.Appd_Fund_Num` |
-| `Fund_Num`                | bigint    | Foreign key to `fundCodes.Fund_Num`               |
 | `Comptroller_Object_Num`  | bigint    | Foreign key to `comptrollerCodes.Comptroller_Object_Num` |
-| `Appropriation_Number`    | bigint    | Foreign key to `appropriationNameCodes.Appropriation_Number` |
 | `Amount`                  | bigint    | The transaction amount                            |
 | `date`                    | date      | The date of the transaction                       |
 | `Payee_id`                | bigint    | Foreign key to `payeeCodes.Payee_id`              |
 
 **Example Row:**
 
-| key | CatCode | Agency_CD | Appd_Fund_Num | Fund_Num | Comptroller_Object_Num | Appropriation_Number | Amount | date       | Payee_id |
-| --- | ------- | --------- | ------------- | -------- | ---------------------- | -------------------- | ------ | ---------- | -------- |
-| 1   | 5       | 529       | 5040          | 5040     | 7664                   | 13315                | 210910 | 2022-08-12 | 0        |
+| key | CatCode | Agency_CD | Appd_Fund_Num | Comptroller_Object_Num | Amount | date       | Payee_id |
+| --- | ------- | --------- | ------------- | ---------------------- | ------ | ---------- | -------- |
+| 1   | 5       | 529       | 5040          | 7664                   | 210910 | 2022-08-12 | 0        |
 
 This row represents a payment of **$210,910** made on **August 12, 2022**. The following sections describe the connected data from other tables.
 
@@ -78,22 +74,6 @@ Provides the name of the applied fund.
 
 ---
 
-### `appropriationNameCodes`
-
-Provides the name of the appropriation.
-
-| Column               | Data Type | Description         |
-| -------------------- | --------- | ------------------- |
-| `key`                | text      | Primary Key         |
-| `Appropriation_Number` | text      | Appropriation Number|
-| `Appropriation_Name` | text      | Name of the Appropriation |
-
-**Connection:** `payments.Appropriation_Number` -> `appropriationNameCodes.Appropriation_Number`
-
-**Example:** For `Appropriation_Number` = `13315`, the `Appropriation_Name` is **Chip Dental Services**.
-
----
-
 ### `categoryCodes`
 
 Provides the category of the payment.
@@ -107,22 +87,6 @@ Provides the category of the payment.
 **Connection:** `payments.CatCode` -> `categoryCodes.CatCode`
 
 **Example:** For `CatCode` = `5`, the `Category` is **Public Assistance Payments**.
-
----
-
-### `fundCodes`
-
-Provides the description of the fund.
-
-| Column           | Data Type | Description      |
-| ---------------- | --------- | ---------------- |
-| `key`            | text      | Primary Key      |
-| `Fund_Num`       | bigint    | Fund Number      |
-| `Fund_Description` | text      | Fund Description |
-
-**Connection:** `payments.Fund_Num` -> `fundCodes.Fund_Num`
-
-**Example:** For `Fund_Num` = `5040`, the `Fund_Description` is **Gr Account-Tobacco Settlement**.
 
 ---
 
@@ -148,7 +112,7 @@ Provides the name of the payee.
 
 | Column     | Data Type | Description |
 | ---------- | --------- | ----------- |
-| `Payee_id` | text      | Primary Key |
+| `Payee_id` | bigint    | Primary Key |
 | `Payee_Name` | text      | Payee Name  |
 
 **Connection:** `payments.Payee_id` -> `payeeCodes.Payee_id`

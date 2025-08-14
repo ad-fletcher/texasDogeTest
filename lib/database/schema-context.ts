@@ -16,8 +16,6 @@ payments (750K records, 2022-01-05 to 2022-12-04):
   - "CatCode" (bigint) → categoryCodes."CatCode" (integer) ✓ CLEAN JOIN
   - "Agency_CD" (bigint) → agencyCodes."Agency_CD" (bigint) ✓ CLEAN JOIN
   - "Appd_Fund_Num" (bigint) → applicationFundCodes."Appd_Fund_Num" (bigint) ✓ CLEAN JOIN
-  - "Fund_Num" (bigint) → fundCodes."Fund_Num" (bigint) ✓ CLEAN JOIN
-  - "Appropriation_Number" (bigint) → appropriationNameCodes."Appropriation_Number" (bigint) ✓ CLEAN JOIN
   - "Amount" (bigint) [stored in DOLLARS - no conversion needed]
   - "date" (date) [2022-01-05 to 2022-12-04]
   - "Payee_id" (bigint) → payeeCodes."Payee_id" (bigint) ✓ CLEAN JOIN
@@ -27,8 +25,6 @@ LOOKUP TABLES (all require quoted identifiers, all codes are integers):
 - "agencyCodes": "Agency_CD" (bigint), "Agency_Name" (193 agencies)
 - "categoryCodes": "CatCode" (integer), "Category" (21 categories)  
 - "applicationFundCodes": "Appd_Fund_Num" (bigint), "Appd_Fund_Num_Name" (496 funds)
-- "appropriationNameCodes": "Appropriation_Number" (bigint), "Appropriation_Name" (5,156 appropriations)
-- "fundCodes": "Fund_Num" (bigint), "Fund_Description" (2,533 funds)
 - "payeeCodes": "Payee_id" (bigint), "Payee_Name" (2.2M payees)
 - "comptrollerCodes": "Comptroller_Object_Num" (bigint), "Comptroller_Object_Name" (378 objects)
 
@@ -56,8 +52,7 @@ CHART-FRIENDLY OUTPUT REQUIREMENTS:
 VALIDATED QUERY PATTERNS (All clean integer joins):
 - Agency Analysis: JOIN "agencyCodes" a ON p."Agency_CD" = a."Agency_CD"
 - Category Analysis: JOIN "categoryCodes" c ON p."CatCode" = c."CatCode"
-- Fund Analysis: JOIN "fundCodes" f ON p."Fund_Num" = f."Fund_Num"
-- Appropriation Analysis: JOIN "appropriationNameCodes" ap ON p."Appropriation_Number" = ap."Appropriation_Number"
+- Application Fund Analysis: JOIN "applicationFundCodes" af ON p."Appd_Fund_Num" = af."Appd_Fund_Num"
 - Payee Analysis: JOIN "payeeCodes" pc ON p."Payee_id" = pc."Payee_id"
 - Comptroller Analysis: JOIN "comptrollerCodes" comp ON p."Comptroller_Object_Num" = comp."Comptroller_Object_Num"
 - Temporal Analysis: DATE_TRUNC('month', p."date") with 2022 date filters
@@ -147,7 +142,7 @@ export const SAMPLE_QUERIES = {
     SELECT 
       DATE_TRUNC('month', p."date") as month,
       a."Agency_Name",
-      SUM(p."Amount")  as monthly_spending_dollars
+      SUM(p."Amount") as monthly_spending_dollars
     FROM "payments" p
     JOIN "agencyCodes" a ON p."Agency_CD" = a."Agency_CD"
     WHERE p."date" >= '2022-01-01' AND p."date" <= '2022-12-31'
@@ -167,8 +162,8 @@ export const SAMPLE_QUERIES = {
     SELECT 
       pc."Payee_Name",
       COUNT(*) as payment_count,
-      SUM(p."Amount")  as total_dollars,
-      MAX(p."Amount")  as largest_payment_dollars
+      SUM(p."Amount") as total_dollars,
+      MAX(p."Amount") as largest_payment_dollars
     FROM "payments" p
     JOIN "payeeCodes" pc ON p."Payee_id" = pc."Payee_id"
     WHERE p."date" >= '2022-01-01' AND p."date" <= '2022-12-31'
@@ -182,16 +177,18 @@ export const SAMPLE_QUERIES = {
     SELECT 
       a."Agency_Name",
       c."Category",
-      f."Fund_Description",
+      af."Appd_Fund_Num_Name",
+      comp."Comptroller_Object_Name",
       COUNT(*) as payment_count,
-      SUM(p."Amount")  as total_dollars
+      SUM(p."Amount") as total_dollars
     FROM "payments" p
     JOIN "agencyCodes" a ON p."Agency_CD" = a."Agency_CD"
     JOIN "categoryCodes" c ON p."CatCode" = c."CatCode"
-    JOIN "fundCodes" f ON p."Fund_Num" = f."Fund_Num"
+    JOIN "applicationFundCodes" af ON p."Appd_Fund_Num" = af."Appd_Fund_Num"
+    JOIN "comptrollerCodes" comp ON p."Comptroller_Object_Num" = comp."Comptroller_Object_Num"
     WHERE p."date" >= '2022-01-01' AND p."date" <= '2022-12-31'
-    GROUP BY a."Agency_Name", c."Category", f."Fund_Description"
-    HAVING SUM(p."Amount") > 100000000  -- Over $1M
+    GROUP BY a."Agency_Name", c."Category", af."Appd_Fund_Num_Name", comp."Comptroller_Object_Name"
+    HAVING SUM(p."Amount") > 100000000  -- Over $100M
     ORDER BY total_dollars DESC
     LIMIT 20;
   `

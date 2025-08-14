@@ -2,6 +2,7 @@
 
 import { useChat } from '@ai-sdk/react';
 import { AnalyticsChart } from '@/components/ui/analytics-chart';
+import { InfoBoxes } from '@/components/ui/info-boxes';
 import { downloadCSVFromServer, formatEstimatedSize } from '@/lib/utils/csv';
 import { useState } from 'react';
 
@@ -12,6 +13,9 @@ export default function Chat() {
 
   // Add state for download progress
   const [downloadingQueries, setDownloadingQueries] = useState<Set<string>>(new Set());
+  
+  // Add state to track if user has started interacting (hide info boxes)
+  const [showInfoBoxes, setShowInfoBoxes] = useState(true);
 
   return (
     <div className="flex flex-col h-screen max-w-6xl mx-auto"> {/* Wider for charts */}
@@ -23,13 +27,15 @@ export default function Chat() {
               {message.role === 'user' ? '👤 You' : '🤖 Texas DOGE Assistant'}
             </div>
             
-            {/* Render message content */}
-            <div className="prose max-w-none">
-              {message.content}
-            </div>
+            {/* For user messages, show content immediately */}
+            {message.role === 'user' && (
+              <div className="prose max-w-none">
+                {message.content}
+              </div>
+            )}
             
-            {/* Render tool invocations */}
-            {message.toolInvocations?.map((toolInvocation) => {
+            {/* Render tool invocations first for assistant messages */}
+            {message.role === 'assistant' && message.toolInvocations?.map((toolInvocation) => {
               const { toolName, toolCallId, state } = toolInvocation;
 
               if (state === 'result') {
@@ -252,6 +258,19 @@ export default function Chat() {
                 );
               }
             })}
+            
+            {/* Render assistant message content AFTER tool invocations */}
+            {message.role === 'assistant' && message.content && (
+              <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r">
+                <div className="flex items-center mb-2">
+                  <span className="text-blue-600 mr-2">🤖</span>
+                  <span className="font-medium text-blue-800">Assistant Response</span>
+                </div>
+                <div className="prose max-w-none text-blue-900">
+                  {message.content}
+                </div>
+              </div>
+            )}
           </div>
         ))}
         
@@ -264,17 +283,28 @@ export default function Chat() {
         )}
       </div>
 
+      {/* Information Boxes - What Users Can Ask For */}
+      <InfoBoxes showInfoBoxes={showInfoBoxes} messagesLength={messages.length} />
+
       {/* Enhanced Input with Chart-focused Suggestions */}
       <div className="border-t p-4 space-y-4">
         {/* Enhanced Quick Action Buttons with Download Options */}
         <div className="flex flex-wrap gap-2">
+        <button 
+            onClick={() => handleSubmit(undefined, {
+              data: { message: "Show me the top 5 agencies by spending with a chart" }
+            })}
+            className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
+          >
+            Categories:
+          </button>
           <button 
             onClick={() => handleSubmit(undefined, {
               data: { message: "Show me the top 5 agencies by spending with a chart" }
             })}
             className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
           >
-            📊 Top Agencies Chart
+            Agency
           </button>
           <button 
             onClick={() => handleSubmit(undefined, {
@@ -282,7 +312,7 @@ export default function Chat() {
             })}
             className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
           >
-            📈 Monthly Trends Chart
+            Category
           </button>
           <button 
             onClick={() => handleSubmit(undefined, {
@@ -290,7 +320,7 @@ export default function Chat() {
             })}
             className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200"
           >
-            🥧 HHS Pie Chart
+            Comptroller Category
           </button>
           <button 
             onClick={() => handleSubmit(undefined, {
@@ -298,7 +328,7 @@ export default function Chat() {
             })}
             className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-sm hover:bg-orange-200"
           >
-            💰 Top Payees Chart
+            Application Fund
           </button>
           
           {/* NEW: Download-focused buttons */}
@@ -308,24 +338,9 @@ export default function Chat() {
             })}
             className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200"
           >
-            📥 Download Agency Data
+            Payee
           </button>
-          <button 
-            onClick={() => handleSubmit(undefined, {
-              data: { message: "Export monthly spending trends for 2022 to CSV" }
-            })}
-            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200"
-          >
-            📊 Export Monthly Data
-          </button>
-          <button 
-            onClick={() => handleSubmit(undefined, {
-              data: { message: "Download Health and Human Services spending breakdown as CSV" }
-            })}
-            className="px-3 py-1 bg-pink-100 text-pink-700 rounded text-sm hover:bg-pink-200"
-          >
-            🏥 HHS Bulk Download
-          </button>
+
         </div>
 
         {/* Input Form */}
@@ -348,8 +363,7 @@ export default function Chat() {
         
         {/* Interactive Features Help */}
         <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-          💡 <strong>Chart Features:</strong> Enhanced tooltips with insights • 
-          Zoom controls on time series charts • Hover effects for better visualization
+          💡 <strong>Disclaimer:</strong> Some information may be confidential due to state statues. 
         </div>
         
         {/* Smart Download Suggestions */}
